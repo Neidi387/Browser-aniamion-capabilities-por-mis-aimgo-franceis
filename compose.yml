@@ -1,0 +1,8 @@
+services:
+  web:
+    image: php:8.2-apache
+    restart: always
+    ports:
+      - 80:80
+    volumes:
+      - ./build:/var/www/htmlno

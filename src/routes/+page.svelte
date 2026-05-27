@@ -1,215 +1,110 @@
-<script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
-	import * as THREE from 'three';
+<svelte:head>
+	<title>WebGL Demos</title>
+</svelte:head>
 
-	let canvas: HTMLCanvasElement;
+<main>
+	<h1>WebGL Demos</h1>
+	<p class="subtitle">Browser animation capabilities with Three.js</p>
 
-	let renderer: THREE.WebGLRenderer;
-	let scene: THREE.Scene;
-	let camera: THREE.PerspectiveCamera;
-	let animationId: number;
+	<div class="cards">
+		<a href="/jumping-man" class="card">
+			<div class="card-icon">&#9664;</div>
+			<h2>Jumping Man</h2>
+			<p>3D character that reacts to device motion, gyroscope tilt, and scroll color shifts.</p>
+		</a>
 
-	let manGroup: THREE.Group;
-	let manMaterial: THREE.MeshStandardMaterial;
+		<a href="/blender-circle" class="card">
+			<div class="card-icon">&#9711;</div>
+			<h2>Blender Circle</h2>
+			<p>Rotating torus with dynamic lighting — drag to orbit, scroll to zoom.</p>
+		</a>
 
-	const manBaseY = 0;
-	let manCurrentY = 0;
-	let velocityY = 0;
-	const GRAVITY = -0.015;
-	const JUMP_VELOCITY = 0.35;
-	const SHAKE_THRESHOLD = 15;
-	const SHAKE_COOLDOWN_MS = 500;
-	let lastShakeTime = 0;
+		<a href="/cv-demo" class="card">
+			<div class="card-icon">&#9673;</div>
+			<h2>CV Demo</h2>
+			<p>Computer vision demo using your webcam feed with real-time canvas overlay.</p>
+		</a>
 
-	let scrollT = 0;
-	const colorGreen = new THREE.Color(0x00ff00);
-	const colorRed = new THREE.Color(0xff0000);
-	const lerpedColor = new THREE.Color();
-
-	let baselineBeta: number | null = null;
-	let baselineGamma: number | null = null;
-
-	let gyroHandler: ((e: DeviceOrientationEvent) => void) | null = null;
-	let motionHandler: ((e: DeviceMotionEvent) => void) | null = null;
-
-	const DEG2RAD = Math.PI / 180;
-
-	function buildMan(): THREE.Group {
-		const g = new THREE.Group();
-
-		const addPart = (geo: THREE.BufferGeometry, x: number, y: number, z: number) => {
-			const mesh = new THREE.Mesh(geo, manMaterial);
-			mesh.position.set(x, y, z);
-			mesh.castShadow = true;
-			g.add(mesh);
-		};
-
-		addPart(new THREE.BoxGeometry(0.6, 0.9, 0.3), 0, 1.45, 0);
-		addPart(new THREE.SphereGeometry(0.25, 16, 12), 0, 2.15, 0);
-		addPart(new THREE.BoxGeometry(0.2, 0.7, 0.2), -0.45, 1.45, 0);
-		addPart(new THREE.BoxGeometry(0.2, 0.7, 0.2), 0.45, 1.45, 0);
-		addPart(new THREE.BoxGeometry(0.22, 0.8, 0.22), -0.19, 0.4, 0);
-		addPart(new THREE.BoxGeometry(0.22, 0.8, 0.22), 0.19, 0.4, 0);
-
-		return g;
-	}
-
-	function initScene() {
-		renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-		renderer.setPixelRatio(window.devicePixelRatio);
-		renderer.setSize(window.innerWidth, window.innerHeight);
-		renderer.shadowMap.enabled = true;
-
-		scene = new THREE.Scene();
-		scene.background = new THREE.Color(0x1a1a2e);
-
-		camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
-		camera.position.set(0, 4, 10);
-		camera.lookAt(0, 1, 0);
-
-		scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-		const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
-		dirLight.position.set(5, 10, 5);
-		dirLight.castShadow = true;
-		scene.add(dirLight);
-
-		const ground = new THREE.Mesh(
-			new THREE.PlaneGeometry(20, 20),
-			new THREE.MeshStandardMaterial({ color: 0x444444 })
-		);
-		ground.rotation.x = -Math.PI / 2;
-		ground.receiveShadow = true;
-		scene.add(ground);
-
-		const wallMat = new THREE.MeshStandardMaterial({ color: 0x223366, side: THREE.DoubleSide });
-		const wallGeo = new THREE.PlaneGeometry(10, 5);
-
-		const wallLeft = new THREE.Mesh(wallGeo, wallMat);
-		wallLeft.position.set(-8, 2.5, 0);
-		wallLeft.rotation.y = Math.PI / 2;
-		scene.add(wallLeft);
-
-		const wallRight = new THREE.Mesh(wallGeo, wallMat);
-		wallRight.position.set(8, 2.5, 0);
-		wallRight.rotation.y = -Math.PI / 2;
-		scene.add(wallRight);
-
-		manMaterial = new THREE.MeshStandardMaterial({ color: colorGreen });
-		manGroup = buildMan();
-		manGroup.position.set(0, manBaseY, 0);
-		scene.add(manGroup);
-	}
-
-	function animate() {
-		animationId = requestAnimationFrame(animate);
-
-		lerpedColor.lerpColors(colorGreen, colorRed, scrollT);
-		manMaterial.color.copy(lerpedColor);
-
-		if (velocityY !== 0 || manCurrentY > manBaseY) {
-			velocityY += GRAVITY;
-			manCurrentY += velocityY;
-			if (manCurrentY <= manBaseY) {
-				manCurrentY = manBaseY;
-				velocityY = 0;
-			}
-			manGroup.position.y = manCurrentY;
-		}
-
-		renderer.render(scene, camera);
-	}
-
-	function onScroll() {
-		scrollT = Math.min(Math.max(window.scrollY / 1000, 0), 1);
-	}
-
-	function onResize() {
-		camera.aspect = window.innerWidth / window.innerHeight;
-		camera.updateProjectionMatrix();
-		renderer.setSize(window.innerWidth, window.innerHeight);
-	}
-
-	async function setupGyroscope() {
-		if (typeof DeviceOrientationEvent === 'undefined') return;
-
-		const handler = (e: DeviceOrientationEvent) => {
-			if (baselineBeta === null) {
-				baselineBeta = e.beta ?? 0;
-				baselineGamma = e.gamma ?? 0;
-				return;
-			}
-			manGroup.rotation.x = ((e.beta ?? 0) - baselineBeta) * DEG2RAD;
-			manGroup.rotation.z = ((e.gamma ?? 0) - (baselineGamma ?? 0)) * DEG2RAD;
-		};
-
-		type PermissionedEvent = { requestPermission?: () => Promise<string> };
-		if (typeof (DeviceOrientationEvent as unknown as PermissionedEvent).requestPermission === 'function') {
-			try {
-				const perm = await (DeviceOrientationEvent as unknown as Required<PermissionedEvent>).requestPermission();
-				if (perm === 'granted') window.addEventListener('deviceorientation', handler);
-			} catch { /* permission denied */ }
-		} else {
-			window.addEventListener('deviceorientation', handler);
-		}
-
-		gyroHandler = handler;
-	}
-
-	function setupMotion() {
-		if (typeof DeviceMotionEvent === 'undefined') return;
-
-		const handler = (e: DeviceMotionEvent) => {
-			const acc = e.accelerationIncludingGravity;
-			if (!acc) return;
-			const mag = Math.sqrt((acc.x ?? 0) ** 2 + (acc.y ?? 0) ** 2 + (acc.z ?? 0) ** 2);
-			if (mag > SHAKE_THRESHOLD) {
-				const now = Date.now();
-				if (now - lastShakeTime > SHAKE_COOLDOWN_MS && manCurrentY <= manBaseY + 0.01) {
-					lastShakeTime = now;
-					velocityY = JUMP_VELOCITY;
-				}
-			}
-		};
-
-		window.addEventListener('devicemotion', handler);
-		motionHandler = handler;
-	}
-
-	onMount(() => {
-		initScene();
-		window.addEventListener('scroll', onScroll, { passive: true });
-		window.addEventListener('resize', onResize);
-		setupGyroscope();
-		setupMotion();
-		document.body.style.height = '2000px';
-		animate();
-	});
-
-	onDestroy(() => {
-		cancelAnimationFrame(animationId);
-		window.removeEventListener('scroll', onScroll);
-		window.removeEventListener('resize', onResize);
-		if (gyroHandler) window.removeEventListener('deviceorientation', gyroHandler);
-		if (motionHandler) window.removeEventListener('devicemotion', motionHandler);
-		scene?.traverse((obj) => {
-			if (obj instanceof THREE.Mesh) obj.geometry.dispose();
-		});
-		manMaterial?.dispose();
-		renderer?.dispose();
-		document.body.style.height = '';
-	});
-</script>
-
-<canvas bind:this={canvas}></canvas>
+		<a href="/gravity" class="card">
+			<div class="card-icon">&#11053;</div>
+			<h2>Gravity</h2>
+			<p>300 colored particles orbit two gravity centers, bouncing off the edges of the viewport.</p>
+		</a>
+	</div>
+</main>
 
 <style>
-	canvas {
-		position: fixed;
-		top: 0;
-		left: 0;
-		width: 100vw;
-		height: 100vh;
-		display: block;
-		touch-action: none;
+	main {
+		min-height: 100vh;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		background: #0e0e1a;
+		padding: 6rem 1.5rem 3rem;
+		font-family: 'Courier New', monospace;
+	}
+
+	h1 {
+		color: #fff;
+		font-size: clamp(1.8rem, 5vw, 3rem);
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		margin: 0 0 0.5rem;
+	}
+
+	.subtitle {
+		color: rgba(255, 255, 255, 0.4);
+		font-size: 0.85rem;
+		letter-spacing: 0.08em;
+		margin: 0 0 3.5rem;
+	}
+
+	.cards {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+		gap: 1.5rem;
+		width: 100%;
+		max-width: 680px;
+	}
+
+	.card {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		padding: 2rem;
+		background: rgba(255, 255, 255, 0.04);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		border-radius: 8px;
+		text-decoration: none;
+		color: inherit;
+		transition: background 0.2s, border-color 0.2s, transform 0.2s;
+	}
+
+	.card:hover {
+		background: rgba(255, 255, 255, 0.08);
+		border-color: rgba(255, 255, 255, 0.25);
+		transform: translateY(-2px);
+	}
+
+	.card-icon {
+		font-size: 2rem;
+		line-height: 1;
+		color: rgba(255, 255, 255, 0.6);
+	}
+
+	.card h2 {
+		color: #fff;
+		font-size: 1.1rem;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		margin: 0;
+	}
+
+	.card p {
+		color: rgba(255, 255, 255, 0.45);
+		font-size: 0.82rem;
+		line-height: 1.6;
+		margin: 0;
 	}
 </style>
