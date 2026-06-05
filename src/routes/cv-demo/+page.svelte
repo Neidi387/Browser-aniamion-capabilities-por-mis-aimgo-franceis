@@ -20,6 +20,9 @@
 	let lastDetectTime = 0;
 	const DETECT_INTERVAL_MS = 66; // ~15 fps
 
+	let videoW = $state(640);
+	let videoH = $state(480);
+
 	const GRAB_ZONE_FACTOR = 1.5;
 	const GRAB_TOLERANCE_FACTOR = 0.5;
 	const FINGERTIP_INDICES = [4, 8, 12, 16, 20];
@@ -164,6 +167,8 @@
 		stream = await navigator.mediaDevices.getUserMedia({ video: true });
 		videoEl.srcObject = stream;
 		await videoEl.play();
+		videoW = videoEl.videoWidth || 640;
+		videoH = videoEl.videoHeight || 480;
 		drawCircles();
 		rafId = requestAnimationFrame(loop);
 
@@ -193,7 +198,7 @@
 
 <div class="page">
 	<video bind:this={videoEl} autoplay playsinline muted style="display:none"></video>
-	<div class="wrapper">
+	<div class="wrapper" style="aspect-ratio: {videoW} / {videoH}">
 		<canvas bind:this={videoCanvas} width={W} height={H}></canvas>
 		<canvas
 			bind:this={overlayCanvas}
@@ -212,24 +217,29 @@
 <style>
 	.page {
 		display: flex;
-		align-items: center;
+		align-items: flex-start;
 		justify-content: center;
 		min-height: 100vh;
 		background: #111;
+		padding: 60px 0.5rem 1.5rem;
+		box-sizing: border-box;
 	}
 
 	.wrapper {
 		position: relative;
+		width: min(640px, 100%);
 	}
 
 	canvas {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
 		display: block;
 	}
 
 	.overlay {
-		position: absolute;
-		top: 0;
-		left: 0;
 		cursor: crosshair;
 	}
 

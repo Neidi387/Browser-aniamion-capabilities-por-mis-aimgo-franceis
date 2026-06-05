@@ -16,6 +16,9 @@
 		<a href="/blender-circle" class:active={$page.url.pathname === '/blender-circle'}>Blender Circle</a>
 		<a href="/cv-demo" class:active={$page.url.pathname === '/cv-demo'}>CV Demo</a>
 		<a href="/gravity" class:active={$page.url.pathname === '/gravity'}>Gravity</a>
+		<a href="/brain" class:active={$page.url.pathname === '/brain'}>Brain</a>
+		<a href="/tv-demo" class:active={$page.url.pathname.startsWith('/tv-demo')}>TV Demo</a>
+		<a href="/ar" class:active={$page.url.pathname === '/ar'}>AR</a>
 	</div>
 </nav>
 
@@ -64,5 +67,29 @@
 	.links {
 		display: flex;
 		gap: 1.5rem;
+		overflow-x: auto;
+		scrollbar-width: none;
+		flex-shrink: 1;
+		min-width: 0;
+	}
+
+	.links::-webkit-scrollbar {
+		display: none;
+	}
+
+	@media (max-width: 640px) {
+		nav {
+			gap: 0.75rem;
+			padding: 0.6rem 0.75rem;
+		}
+
+		.links {
+			gap: 0.9rem;
+		}
+
+		nav a {
+			font-size: 0.75rem;
+			white-space: nowrap;
+		}
 	}
 </style>

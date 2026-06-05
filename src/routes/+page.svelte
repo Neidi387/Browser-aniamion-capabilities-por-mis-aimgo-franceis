@@ -30,6 +30,25 @@
 			<h2>Gravity</h2>
 			<p>300 colored particles orbit two gravity centers, bouncing off the edges of the viewport.</p>
 		</a>
+
+		<a href="/tv-demo" class="card">
+			<div class="card-icon">&#9728;</div>
+			<h2>TV Demo</h2>
+			<p>Eight MediaPipe tasks-vision demos — hand drawing, gesture, face mesh, pose, segmentation and more.</p>
+		</a>
+
+		<a href="/brain" class="card">
+			<div class="card-icon">&#129504;</div>
+			<h2>Brain</h2>
+			<p>Interactive 3D brain model rendered in WebGL.</p>
+		</a>
+
+		<a href="/ar" class="card">
+			<div class="card-icon">&#9654;</div>
+			<h2>AR</h2>
+			<p>Markerless augmented reality — live camera feed with a gyroscope-driven Three.js overlay.</p>
+		</a>
+
 	</div>
 </main>
 
