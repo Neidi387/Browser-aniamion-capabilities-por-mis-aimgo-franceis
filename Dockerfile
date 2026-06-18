@@ -8,4 +8,6 @@ RUN npm run build
 FROM httpd:alpine
 COPY --from=builder /app/build/ /usr/local/apache2/htdocs/
 EXPOSE 81
-RUN sed -i 's/Listen 80/Listen 81/' /usr/local/apache2/conf/httpd.conf
+RUN sed -i 's/Listen 80/Listen 81/' /usr/local/apache2/conf/httpd.conf && \
+    printf '\nServerName localhost\nFallbackResource /index.html\n' \
+      >> /usr/local/apache2/conf/httpd.conf
