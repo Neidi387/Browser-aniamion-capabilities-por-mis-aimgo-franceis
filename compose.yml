@@ -1,8 +1,6 @@
 services:
   art:
-    image: php:8.2-apache
+    build: .
     restart: always
     ports:
-      - 80:80
-    volumes:
-      - ./build:/var/www/html
+      - 3001:3001
